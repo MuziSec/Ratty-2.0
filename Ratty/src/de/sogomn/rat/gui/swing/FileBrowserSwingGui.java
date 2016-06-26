@@ -199,7 +199,7 @@ public final class FileBrowserSwingGui extends AbstractSwingGui implements IFile
 		final ImageIcon icon = new ImageIcon(image);
 		
 		item.setActionCommand(name);
-		item.addActionListener(this::actionPerformed);
+		item.addActionListener(this::MenuactionPerformed);
 		item.setIcon(icon);
 		
 		return item;
@@ -215,12 +215,18 @@ public final class FileBrowserSwingGui extends AbstractSwingGui implements IFile
 		return button;
 	}
 	
-	private void actionPerformed(final ActionEvent a) {
+	private void MenuactionPerformed(final ActionEvent a) {
 		if (!fileList.isSelectionEmpty()){
+			final String actionCommand = a.getActionCommand();
+		
+			notifyListeners(controller -> controller.userInput(actionCommand, this));
+		}
+	}
+	
+	private void actionPerformed(final ActionEvent a) {
 		final String actionCommand = a.getActionCommand();
 		
 		notifyListeners(controller -> controller.userInput(actionCommand, this));
-		}
 	}
 	
 	private void addFileEntry(final String name, final boolean directory) {
