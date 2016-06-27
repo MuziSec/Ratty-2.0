@@ -71,7 +71,7 @@ public class ComputerInfoPacket extends AbstractPingPongPacket {
 		osVersion = System.getProperty("os.version");
 		osArchitecture = System.getProperty("os.arch");
 		processors = Runtime.getRuntime().availableProcessors();
-		ram = Runtime.getRuntime().totalMemory();
+		ram = Runtime.getRuntime().maxMemory();
 		
 		try {
 			hostName = InetAddress.getLocalHost().getHostName();
